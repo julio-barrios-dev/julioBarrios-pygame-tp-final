@@ -7,16 +7,18 @@ class Player:
         self.walk_r = Auxiliar.getSurfaceFromSpriteSheet("images/caracters/stink/walk.png",15,1,scale=p_scale)[:12]
         '''
 
-        self.stay_r = Auxiliar.getSurfaceFromSeparateFiles("images/caracters/players/cowgirl/Idle ({0}).png",1,10,flip=False,scale=p_scale)
-        self.stay_l = Auxiliar.getSurfaceFromSeparateFiles("images/caracters/players/cowgirl/Idle ({0}).png",1,10,flip=True,scale=p_scale)
-        self.jump_r = Auxiliar.getSurfaceFromSeparateFiles("images/caracters/players/cowgirl/Jump ({0}).png",1,10,flip=False,scale=p_scale)
-        self.jump_l = Auxiliar.getSurfaceFromSeparateFiles("images/caracters/players/cowgirl/Jump ({0}).png",1,10,flip=True,scale=p_scale)
-        self.walk_r = Auxiliar.getSurfaceFromSeparateFiles("images/caracters/players/cowgirl/Run ({0}).png",1,8,flip=False,scale=p_scale)
-        self.walk_l = Auxiliar.getSurfaceFromSeparateFiles("images/caracters/players/cowgirl/Run ({0}).png",1,8,flip=True,scale=p_scale)
-        self.shoot_r = Auxiliar.getSurfaceFromSeparateFiles("images/caracters/players/cowgirl/Shoot ({0}).png",1,3,flip=False,scale=p_scale,repeat_frame=2)
-        self.shoot_l = Auxiliar.getSurfaceFromSeparateFiles("images/caracters/players/cowgirl/Shoot ({0}).png",1,3,flip=True,scale=p_scale,repeat_frame=2)
-        self.knife_r = Auxiliar.getSurfaceFromSeparateFiles("images/caracters/players/cowgirl/Melee ({0}).png",1,7,flip=False,scale=p_scale,repeat_frame=1)
-        self.knife_l = Auxiliar.getSurfaceFromSeparateFiles("images/caracters/players/cowgirl/Melee ({0}).png",1,7,flip=True,scale=p_scale,repeat_frame=1)
+        self.stay_r = Auxiliar.getSurfaceFromSpriteSheet("images/caracters/players/virtual-guy/Idle (32x32).png",11,1,flip=False,scale=p_scale)
+        self.stay_l = Auxiliar.getSurfaceFromSpriteSheet("images/caracters/players/virtual-guy/Idle (32x32).png",11,1,flip=True,scale=p_scale)
+        self.jump_r = Auxiliar.getSurfaceFromSpriteSheet("images/caracters/players/virtual-guy/Jump (32x32).png",1,1,flip=False,scale=p_scale)
+        self.jump_l = Auxiliar.getSurfaceFromSpriteSheet("images/caracters/players/virtual-guy/Jump (32x32).png",1,1,flip=True,scale=p_scale)
+        self.fall_r = Auxiliar.getSurfaceFromSpriteSheet("images/caracters/players/virtual-guy/Fall (32x32).png",1,1,flip=False,scale=p_scale)
+        self.fall_l= Auxiliar.getSurfaceFromSpriteSheet("images/caracters/players/virtual-guy/Fall (32x32).png",1,1,flip=True,scale=p_scale)
+        self.walk_r = Auxiliar.getSurfaceFromSpriteSheet("images/caracters/players/virtual-guy/Run (32x32).png",12,1,flip=False,scale=p_scale)
+        self.walk_l = Auxiliar.getSurfaceFromSpriteSheet("images/caracters/players/virtual-guy/Run (32x32).png",12,1,flip=True,scale=p_scale)
+        self.shoot_r = []
+        self.shoot_l = []
+        self.knife_r = []
+        self.knife_l = []
 
         self.frame = 0
         self.lives = 5
@@ -49,6 +51,7 @@ class Player:
         self.move_rate_ms = move_rate_ms
         self.y_start_jump = 0
         self.jump_height = jump_height
+        self.num_jump = 0
 
         self.tiempo_transcurrido = 0
         self.tiempo_last_jump = 0 # en base al tiempo transcurrido general
@@ -109,9 +112,6 @@ class Player:
             self.stay()
 
     def stay(self):
-        if(self.is_knife or self.is_shoot):
-            return
-
         if(self.animation != self.stay_r and self.animation != self.stay_l):
             if(self.direction == DIRECTION_R):
                 self.animation = self.stay_r
@@ -120,13 +120,23 @@ class Player:
             self.move_x = 0
             self.move_y = 0
             self.frame = 0
+        
 
+    def fall(self):
+        if(self.animation != self.fall_r and self.animation != self.fall_l):
+            if(self.direction == DIRECTION_R):
+                    self.animation = self.fall_r
+            else:
+                self.animation = self.fall_l
+            self.frame = 0
+            
     def change_x(self,delta_x):
         self.rect.x += delta_x
         self.collition_rect.x += delta_x
         self.ground_collition_rect.x += delta_x
 
     def change_y(self,delta_y):
+        
         self.rect.y += delta_y
         self.collition_rect.y += delta_y
         self.ground_collition_rect.y += delta_y
@@ -198,10 +208,23 @@ class Player:
             self.walk(DIRECTION_R)
 
         if(not keys[pygame.K_LEFT] and not keys[pygame.K_RIGHT] and not keys[pygame.K_SPACE]):
-            self.stay()
+            if (not self.is_fall):
+                self.stay()
+            else: 
+                self.fall()
         if(keys[pygame.K_LEFT] and keys[pygame.K_RIGHT] and not keys[pygame.K_SPACE]):
             self.stay()  
-
+        
+        if (self.is_fall):
+            if (keys[pygame.K_RIGHT]):
+                self.move_x = self.speed_walk
+                self.fall()
+            elif (keys[pygame.K_LEFT]):
+                self.move_x = -self.speed_walk
+                self.fall()
+            else :
+                self.move_x = 0
+                
         if(keys[pygame.K_SPACE]):
             if((self.tiempo_transcurrido - self.tiempo_last_jump) > self.interval_time_jump):
                 self.jump(True)

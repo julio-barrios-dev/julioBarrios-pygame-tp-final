@@ -9,7 +9,7 @@ clock_fps = pygame.time.Clock()
 
 background_image = pygame.image.load('./images/locations/set_bg_01/forest/all.png').convert_alpha()
 background_image = pygame.transform.scale(background_image, (ANCHO_VENTANA, ALTO_VENTANA))
-player_1= Player(x=0,y=300, speed_walk=4, speed_run=8, gravity=8, jump_power=50, frame_rate_ms=80, move_rate_ms= 40, jump_height=100, p_scale=.2)
+player_1= Player(x=0,y=300, speed_walk=4, speed_run=8, gravity=8, jump_power=10, frame_rate_ms=80, move_rate_ms= 40, jump_height=100, p_scale=1)
 run = True;
 
 while run:
