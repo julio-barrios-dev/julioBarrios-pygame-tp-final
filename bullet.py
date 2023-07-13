@@ -3,7 +3,7 @@ from constantes import *
 from auxiliar import Auxiliar
 import math
 
-class Bullet():
+class Bullet(pygame.sprite.Sprite):
     
     def __init__(self,owner,x_init,y_init,x_end,y_end,speed,path,frame_rate_ms,move_rate_ms,width=5,height=5) -> None:
         self.tiempo_transcurrido_move = 0

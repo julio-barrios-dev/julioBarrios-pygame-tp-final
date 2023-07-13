@@ -2,7 +2,7 @@ import pygame
 from constantes import *
 from auxiliar import Auxiliar
 class Player:
-    def __init__(self,x,y,speed_walk,speed_run,gravity,jump_power,frame_rate_ms,move_rate_ms,jump_height,p_scale=1,interval_time_jump=100) -> None:
+    def __init__(self,x,y,speed_walk,speed_run ,jump_power, frame_rate_ms,move_rate_ms,jump_height,p_scale=1,interval_time_jump=100, gravity = GRAVITY) -> None:
         '''
         self.walk_r = Auxiliar.getSurfaceFromSpriteSheet("images/caracters/stink/walk.png",15,1,scale=p_scale)[:12]
         '''
@@ -15,23 +15,31 @@ class Player:
         self.fall_l= Auxiliar.getSurfaceFromSpriteSheet("images/caracters/players/virtual-guy/Fall (32x32).png",1,1,flip=True,scale=p_scale)
         self.walk_r = Auxiliar.getSurfaceFromSpriteSheet("images/caracters/players/virtual-guy/Run (32x32).png",12,1,flip=False,scale=p_scale)
         self.walk_l = Auxiliar.getSurfaceFromSpriteSheet("images/caracters/players/virtual-guy/Run (32x32).png",12,1,flip=True,scale=p_scale)
+        self.animation_list = [self.stay_r, self.walk_r, self.jump_r, self.fall_r]
         self.shoot_r = []
         self.shoot_l = []
         self.knife_r = []
         self.knife_l = []
 
+        self.moving_left = False
+        self.moving_right = False
+        self.action = 0
+        self.flip = False
+
         self.frame = 0
         self.lives = 5
+        self.alive = True
         self.score = 0
-        self.move_x = 0
-        self.move_y = 0
+        # self.move_x = 0
+        # self.move_y = 0
+        self.vel_y = 0
         self.speed_walk =  speed_walk
         self.speed_run =  speed_run
         self.gravity = gravity
         self.jump_power = jump_power
         self.animation = self.stay_r
         self.direction = DIRECTION_R
-        self.image = self.animation[self.frame]
+        self.image = self.animation_list[self.action][self.frame]
         self.rect = self.image.get_rect()
         self.rect.x = x
         self.rect.y = y
@@ -40,10 +48,13 @@ class Player:
         self.ground_collition_rect.height = GROUND_COLLIDE_H
         self.ground_collition_rect.y = y + self.rect.height - GROUND_COLLIDE_H
 
+        self.in_air = False
         self.is_jump = False
+        self.jump = False
         self.is_fall = False
         self.is_shoot = False
         self.is_knife = False
+        self.control_jump = True
 
         self.tiempo_transcurrido_animation = 0
         self.frame_rate_ms = frame_rate_ms 
@@ -57,6 +68,75 @@ class Player:
         self.tiempo_last_jump = 0 # en base al tiempo transcurrido general
         self.interval_time_jump = interval_time_jump
 
+        self.bullet_group = []
+
+    def move(self, delta_ms):
+        move_x = 0
+        move_y = 0
+
+        self.tiempo_transcurrido_move += delta_ms
+        if(self.tiempo_transcurrido_move >= self.move_rate_ms):
+            self.tiempo_transcurrido_move = 0
+
+            if self.moving_left:
+                move_x = -self.speed_walk
+                self.flip = True
+                self.direction = DIRECTION_L
+            
+            if self.moving_right:
+                move_x = self.speed_walk
+                self.flip = False
+                self.direction = DIRECTION_R
+            
+            if self.jump == True and self.in_air == False:
+                self.vel_y = -self.jump_power
+                self.jump = False
+                self.in_air = True
+
+            if self.jump == True and self.in_air == True and self.num_jump > 2:
+                self.vel_y = -self.jump_power
+                if (move_y >= 0):
+                    self.num_jump = 0
+
+            #check is fall
+            if self.vel_y > 0 and self.in_air == True:
+                self.is_fall = True 
+            else: 
+                self.is_fall = False 
+
+            #Apply gravity
+            self.vel_y += self.gravity
+            if self.vel_y > 10:
+                self.vel_y = 10
+            move_y += self.vel_y
+
+            #check collision with floor
+            if self.rect.bottom + move_y > 300:
+                move_y = 300 - self.rect.bottom
+                self.in_air = False
+            
+            #update rectangle position
+            self.change_x(move_x)
+            self.change_y(move_y)
+
+    def update_action(self, new_action):
+        if new_action != self.action:
+            self.action = new_action
+            #update the animation settings
+            self.frame = 0
+            self.tiempo_transcurrido_animation = 0
+
+    def do_animation(self,delta_ms):
+        self.tiempo_transcurrido_animation += delta_ms
+        self.image = self.animation_list[self.action][self.frame]
+
+        if(self.tiempo_transcurrido_animation >= self.frame_rate_ms):
+            self.tiempo_transcurrido_animation = 0
+            if(self.frame < len(self.animation_list[self.action]) - 1):
+                self.frame += 1 
+            else: 
+                self.frame = 0
+                        
     def walk(self,direction):
         if(self.is_jump == False and self.is_fall == False):
             if(self.direction != direction or (self.animation != self.walk_r and self.animation != self.walk_l)):
@@ -94,22 +174,22 @@ class Player:
                 else:
                     self.animation = self.knife_l      
 
-    def jump(self,on_off = True):
-        if(on_off and self.is_jump == False and self.is_fall == False):
-            self.y_start_jump = self.rect.y
-            if(self.direction == DIRECTION_R):
-                self.move_x = int(self.move_x / 2)
-                self.move_y = -self.jump_power
-                self.animation = self.jump_r
-            else:
-                self.move_x = int(self.move_x / 2)
-                self.move_y = -self.jump_power
-                self.animation = self.jump_l
-            self.frame = 0
-            self.is_jump = True
-        if(on_off == False):
-            self.is_jump = False
-            self.stay()
+    # def jump(self,on_off = True):
+    #     if(on_off and self.is_jump == False and self.is_fall == False):
+    #         self.y_start_jump = self.rect.y
+    #         if(self.direction == DIRECTION_R):
+    #             self.move_x = int(self.move_x / 2)
+    #             self.move_y = -self.jump_power
+    #             self.animation = self.jump_r
+    #         else:
+    #             self.move_x = int(self.move_x / 2)
+    #             self.move_y = -self.jump_power
+    #             self.animation = self.jump_l
+    #         self.frame = 0
+    #         self.is_jump = True
+    #     if(on_off == False):
+    #         self.is_jump = False
+    #         self.stay()
 
     def stay(self):
         if(self.animation != self.stay_r and self.animation != self.stay_l):
@@ -172,72 +252,54 @@ class Player:
                     retorno = True
                     break       
         return retorno                 
-
-    def do_animation(self,delta_ms):
-        self.tiempo_transcurrido_animation += delta_ms
-        if(self.tiempo_transcurrido_animation >= self.frame_rate_ms):
-            self.tiempo_transcurrido_animation = 0
-            if(self.frame < len(self.animation) - 1):
-                self.frame += 1 
-            else: 
-                self.frame = 0
  
-    def update(self,delta_ms,plataform_list):
-        self.do_movement(delta_ms,plataform_list)
+    def update(self,delta_ms):
+        self.move(delta_ms)
         self.do_animation(delta_ms)
         
-    
     def draw(self,screen):
         
         if(DEBUG):
             pygame.draw.rect(screen,color=(255,0 ,0),rect=self.collition_rect)
             pygame.draw.rect(screen,color=(255,255,0),rect=self.ground_collition_rect)
         
-        self.image = self.animation[self.frame]
-        screen.blit(self.image,self.rect)
+        screen.blit(pygame.transform.flip(self.image, self.flip, False), self.rect)
         
 
-    def events(self,delta_ms,keys):
+    def events(self,keys, delta_ms):
         self.tiempo_transcurrido += delta_ms
 
+        if self.alive:
+            if self.in_air and self.is_fall:
+                self.update_action(3)#3: fall
+            elif self.in_air:
+                self.update_action(2)#2: jump
+            elif self.moving_left or self.moving_right:
+                self.update_action(1)#1: walk
+            else:
+                self.update_action(0)#0: idle
 
-        if(keys[pygame.K_LEFT] and not keys[pygame.K_RIGHT]):
-            self.walk(DIRECTION_L)
+        #keyboard presses
+        if keys[pygame.K_LEFT]:
+            self.moving_left = True
 
-        if(not keys[pygame.K_LEFT] and keys[pygame.K_RIGHT]):
-            self.walk(DIRECTION_R)
+        if keys[pygame.K_RIGHT]:
+            self.moving_right = True 
 
-        if(not keys[pygame.K_LEFT] and not keys[pygame.K_RIGHT] and not keys[pygame.K_SPACE]):
-            if (not self.is_fall):
-                self.stay()
-            else: 
-                self.fall()
-        if(keys[pygame.K_LEFT] and keys[pygame.K_RIGHT] and not keys[pygame.K_SPACE]):
-            self.stay()  
+        if(keys[pygame.K_SPACE] and self.control_jump == True):
+            self.jump = True
+            self.control_jump = False
+            self.num_jump += 1
+            # self.tiempo_last_jump = self.tiempo_transcurrido 
+
         
-        if (self.is_fall):
-            if (keys[pygame.K_RIGHT]):
-                self.move_x = self.speed_walk
-                self.fall()
-            elif (keys[pygame.K_LEFT]):
-                self.move_x = -self.speed_walk
-                self.fall()
-            else :
-                self.move_x = 0
-                
-        if(keys[pygame.K_SPACE]):
-            if((self.tiempo_transcurrido - self.tiempo_last_jump) > self.interval_time_jump):
-                self.jump(True)
-                self.tiempo_last_jump = self.tiempo_transcurrido
 
-        if(not keys[pygame.K_a]):
-            self.shoot(False)  
+        #keyboard button released
+        if not keys[pygame.K_LEFT]:
+            self.moving_left = False
 
-        if(not keys[pygame.K_a]):
-            self.knife(False)  
+        if not keys[pygame.K_RIGHT]:
+            self.moving_right = False 
 
-        if(keys[pygame.K_s] and not keys[pygame.K_a]):
-            self.shoot()   
-        
-        if(keys[pygame.K_a] and not keys[pygame.K_s]):
-            self.knife()   
+        if not keys[pygame.K_SPACE]:
+            self.control_jump = True
