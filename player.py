@@ -1,8 +1,9 @@
 import pygame
 from constantes import *
 from auxiliar import Auxiliar
+from bullet import Bullet
 class Player:
-    def __init__(self,x,y,speed_walk,speed_run ,jump_power, frame_rate_ms,move_rate_ms,jump_height,p_scale=1,interval_time_jump=100, gravity = GRAVITY) -> None:
+    def __init__(self,x,y,speed_walk,speed_run ,jump_power,frame_rate_ms,move_rate_ms,jump_height,list_enemies,bullet_group,p_scale=1,interval_time_jump=100, gravity = GRAVITY) -> None:
         '''
         self.walk_r = Auxiliar.getSurfaceFromSpriteSheet("images/caracters/stink/walk.png",15,1,scale=p_scale)[:12]
         '''
@@ -25,6 +26,9 @@ class Player:
         self.moving_right = False
         self.action = 0
         self.flip = False
+
+        self.shoot_cooldown = 0
+        self.bullet_group = bullet_group
 
         self.frame = 0
         self.lives = 5
@@ -68,7 +72,7 @@ class Player:
         self.tiempo_last_jump = 0 # en base al tiempo transcurrido general
         self.interval_time_jump = interval_time_jump
 
-        self.bullet_group = []
+        self.list_enemies = list_enemies.sprites()
 
     def move(self, delta_ms):
         move_x = 0
@@ -119,6 +123,12 @@ class Player:
             self.change_x(move_x)
             self.change_y(move_y)
 
+    def shoot(self):
+        if self.shoot_cooldown == 0:
+            self.shoot_cooldown = 20
+            bullet = Bullet(x_init=self.rect.centerx + (0.6 * self.rect.size[0] * self.direction),speed=25,path="./images/caracters/bullets/bullet.png",y_init=self.rect.centery,direction=self.direction,frame_rate_ms=80,move_rate_ms=100, bullet_group=self.bullet_group, list_enemies=self.list_enemies)
+            self.bullet_group.add(bullet)
+
     def update_action(self, new_action):
         if new_action != self.action:
             self.action = new_action
@@ -148,18 +158,6 @@ class Player:
                 else:
                     self.move_x = -self.speed_walk
                     self.animation = self.walk_l
-
-    def shoot(self,on_off = True):
-        self.is_shoot = on_off
-        if(on_off == True and self.is_jump == False and self.is_fall == False):
-
-            if(self.animation != self.shoot_r and self.animation != self.shoot_l):
-                self.frame = 0
-                self.is_shoot = True
-                if(self.direction == DIRECTION_R):
-                    self.animation = self.shoot_r
-                else:
-                    self.animation = self.shoot_l       
 
     def receive_shoot(self):
         self.lives -= 1
@@ -256,6 +254,8 @@ class Player:
     def update(self,delta_ms):
         self.move(delta_ms)
         self.do_animation(delta_ms)
+        if self.shoot_cooldown > 0:
+            self.shoot_cooldown -= 1
         
     def draw(self,screen):
         
@@ -270,7 +270,9 @@ class Player:
         self.tiempo_transcurrido += delta_ms
 
         if self.alive:
-            if self.in_air and self.is_fall:
+            if self.is_shoot:
+                self.shoot()
+            elif self.in_air and self.is_fall:
                 self.update_action(3)#3: fall
             elif self.in_air:
                 self.update_action(2)#2: jump
@@ -286,6 +288,9 @@ class Player:
         if keys[pygame.K_RIGHT]:
             self.moving_right = True 
 
+        if keys[pygame.K_a]:
+            self.is_shoot = True 
+
         if(keys[pygame.K_SPACE] and self.control_jump == True):
             self.jump = True
             self.control_jump = False
@@ -300,6 +305,9 @@ class Player:
 
         if not keys[pygame.K_RIGHT]:
             self.moving_right = False 
+
+        if not keys[pygame.K_a]:
+            self.is_shoot = False 
 
         if not keys[pygame.K_SPACE]:
             self.control_jump = True
